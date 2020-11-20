@@ -34,7 +34,7 @@ data1 = original[:,:] - adjust[:,:]
 paddedData1 = padArray(data1, np.shape(data1))
 
 """ Make false, if you want to run the code with the test image || Make true to run with randomized array """
-testWithRandom = False
+testWithRandom = True
 
 if(testWithRandom):
     original = np.random.randint(255, size=(17, 15)) # Change dimensions here
@@ -109,12 +109,17 @@ print("Original image: \n", original)
 print("restoredImage : \n", restoredImage)    
 np.testing.assert_array_equal(restoredImage, original)
 
-# For replaySingle compatability
-restoredImage = restoredImage.astype(np.uint8)       
-fileNameW = 'restoredFrame.txt'
-outFile = open(fileNameW, 'wb')
-outFile.write(struct.pack('<l', image_len))
-outFile.write(restoredImage)
-outFile.write(struct.pack('<L', 0))
-outFile.close()
-print('Output image length is: ', restoredImage.size)
+
+
+
+
+# For replaySingle compatability, only runs when testing with singleFrame
+if(not testWithRandom):
+    restoredImage = restoredImage.astype(np.uint8)       
+    fileNameW = 'restoredFrame.txt'
+    outFile = open(fileNameW, 'wb')
+    outFile.write(struct.pack('<l', image_len))
+    outFile.write(restoredImage)
+    outFile.write(struct.pack('<L', 0))
+    outFile.close()
+    print('Output image length is: ', restoredImage.size)
