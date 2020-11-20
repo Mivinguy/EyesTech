@@ -103,8 +103,23 @@ else:
         # Dims = (odd, odd)
         restoredImage[:,::2] = restoredImageEven[:,:]
 
-restoredImage = restoredImage[:,:] + adjust[:,:]                                            
+restoredImage = restoredImage[:,:] + adjust[:,:]                         
 
 print("Original image: \n", original)
 print("restoredImage : \n", restoredImage)    
 np.testing.assert_array_equal(restoredImage, original)
+
+
+
+
+
+# For replaySingle compatability, only runs when testing with singleFrame
+if(not testWithRandom):
+    restoredImage = restoredImage.astype(np.uint8)       
+    fileNameW = 'restoredFrame.txt'
+    outFile = open(fileNameW, 'wb')
+    outFile.write(struct.pack('<l', image_len))
+    outFile.write(restoredImage)
+    outFile.write(struct.pack('<L', 0))
+    outFile.close()
+    print('Output image length is: ', restoredImage.size)
