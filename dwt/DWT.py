@@ -34,7 +34,7 @@ data1 = original[:,:] - adjust[:,:]
 paddedData1 = padArray(data1, np.shape(data1))
 
 """ Make false, if you want to run the code with the test image || Make true to run with randomized array """
-testWithRandom = True
+testWithRandom = False
 
 if(testWithRandom):
     original = np.random.randint(255, size=(17, 15)) # Change dimensions here
@@ -108,6 +108,16 @@ restoredImage = restoredImage[:,:] + adjust[:,:]
 print("Original image: \n", original)
 print("restoredImage : \n", restoredImage)    
 np.testing.assert_array_equal(restoredImage, original)
+
+print(np.shape(bandLL))
+
+print(np.shape(bandLH))
+
+print(np.shape(bandHL))
+
+print(np.shape(bandHH))
+
+print(np.shape(original))
 
 
 
