@@ -8,6 +8,10 @@
 
 # To compress H bands 
 
+# To Do:
+#   compress and store tree for decoding
+#   write decompression function
+
 ###########
 
 import struct
@@ -49,6 +53,7 @@ class huffmanCoding:
         for val in frequency:
             node = Node(val, frequency[val])
             heapq.heappush(self.heap, node)
+
     
     def buildTree(self):
         while(len(self.heap)>1):
@@ -77,24 +82,17 @@ class huffmanCoding:
         self.buildCodebookHelper(root.right, currentCode + "1")
 
     def encodeImage(self, image, stream):
+        codeStr = ""
         for row in range(np.shape(image)[0]):
             for col in range(np.shape(image)[1]):
-                currentCode = self.codeBook[(image[row][col])]
-                self.bitsToBuffer(currentCode, stream)
+                codeStr += self.codeBook[(image[row][col])]
+        stream.write(self.toBytes(codeStr))
 
-    def bitsToBuffer(self, bitStr, stream):
-        if bitStr is not None:
-            for bit in range(len(bitStr)):
-                self.bitBuffer.append(bitStr[bit])
-                if len(self.bitBuffer) >= 8:
-                    self.bufferToFile(stream)
-    
-    def bufferToFile(self, stream):
-        byte = self.bitBuffer[:8]
-        self.bitBuffer = self.bitBuffer[8:]
-        str = ""
-        intValue = int(str.join(byte), 2)
-        stream.write(bytes(intValue))
+    def toBytes(self, data):
+        b = bytearray()
+        for i in range(0, len(data), 8):
+            b.append(int(data[i:i+8], 2))
+        return bytes(b)
 
     def compress(self):
         fileNameW = 'compressedFrame.bin'
@@ -103,13 +101,8 @@ class huffmanCoding:
         self.createHeap(freq)
         self.buildTree()
         self.buildCodebook()
-        print(len(self.codeBook))
-        encodedImage = self.encodeImage(self.image, outFile)
-        self.bitsToBuffer(encodedImage, outFile)
-        #fileNameW = 'compressedFrame.bin'
-        #outFile = open(fileNameW, 'wb')
-        #outFile.write(bytes(b))
-        #print(self.codeBook)
+        self.encodeImage(self.image, outFile)
+
 
 """ Testing """
 
@@ -125,7 +118,7 @@ image_stream.write(inFile.read(image_len))
 image_stream.seek(0)
 
 
-original = np.frombuffer(image_stream.getvalue(), dtype=np.uint8).reshape(318,183) # reshaped the test image, it is originally of dimension (58194,)
+original = np.load('outfile.npy')
 huffmanCoding(original).compress()
 print('input image size: ', original.size)
 

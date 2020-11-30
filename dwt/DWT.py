@@ -108,16 +108,8 @@ restoredImage = restoredImage[:,:] + adjust[:,:]
 print("Original image: \n", original)
 print("restoredImage : \n", restoredImage)    
 np.testing.assert_array_equal(restoredImage, original)
-
-print(np.shape(bandLL))
-
-print(np.shape(bandLH))
-
-print(np.shape(bandHL))
-
 print(np.shape(bandHH))
-
-print(np.shape(original))
+np.save("outfile", bandHH)
 
 
 
