@@ -109,7 +109,9 @@ print("Original image: \n", original)
 print("restoredImage : \n", restoredImage)    
 np.testing.assert_array_equal(restoredImage, original)
 print(np.shape(bandHH))
-np.save("outfile", bandHH)
+np.save("outfileHH", bandHH)
+np.save("outfileHL", bandHL)
+np.save("outfileLH", bandLH)
 
 
 
