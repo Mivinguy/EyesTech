@@ -9,8 +9,10 @@
 # To compress H bands 
 
 # To Do:
-#   compress and store tree for decoding
-#   write decompression function
+#   1. write decompression function
+#       - Read in full binary string 
+#       - Map binary strings to image pixel values
+#       - Build original image
 
 ###########
 
@@ -40,8 +42,8 @@ class huffmanCoding:
     def __init__(self, image):
         self.image = image
         self.heap = []
+        self.heapCopy = []
         self.codeBook = {}
-        self.bitBuffer = []
 
     def frequency(self, image):
         # Count frequency of each pixel value
@@ -71,7 +73,7 @@ class huffmanCoding:
             heapq.heappush(self.heap, parent)
 
     def buildCodebook(self):
-        root = heapq.heappop(self.heap)
+        root = heapq.heappop(self.heapCopy)
         currentCode = ""
         self.buildCodebookHelper(root, currentCode)
 
@@ -94,6 +96,7 @@ class huffmanCoding:
         stream.write(self.toBytes(codeStr))
 
     def toBytes(self, data):
+        # Converts binary string to bytes
         b = bytearray()
         for i in range(0, len(data), 8):
             b.append(int(data[i:i+8], 2))
@@ -109,16 +112,27 @@ class huffmanCoding:
         binCol = f'{cols:016b}'
         stream.write(self.toBytes(binCol))
 
-    def encodeTree(self, tree, stream):
-        tempHeap = tree
-        root = heapq.heappop(tempHeap)
+    def encodeTree(self, stream):
+        root = heapq.heappop(self.heap)
+
+        # Make a copy of the original heap to build code book
+        heapq.heappush(self.heapCopy, root)
+        
         self.encodeTreeHelper(root, stream)
 
     def encodeTreeHelper(self, node, stream):
         if (node.left == None and node.right == None):
-            print(node.val)
+            # Leaf node, write 1, followed by value 
+            stream.write((struct.pack('b', 1)))
+
+            # Value is 4 bytes
+            data = struct.pack('f', node.val)
+            #print(struct.unpack('f',data)[0])
+            stream.write(data)
 
         else:
+            # Parent node, write 0, continue down
+            stream.write((struct.pack('b', 0)))
             self.encodeTreeHelper(node.left, stream)
             self.encodeTreeHelper(node.right, stream)
 
@@ -128,16 +142,12 @@ class huffmanCoding:
         freq = self.frequency(self.image)
         self.createHeap(freq)
         self.buildTree()
-        #print(self.heap)
 
         # First 4 bytes will always be original dimensions
         self.encodeDims(outFile) 
 
         # Write encoded tree to file
-        """ This uses up the original heap, no way to copy the original heap"""
-        #print(self.heap)
-        self.encodeTree(self.heap, outFile)
-        #print(self.heap)
+        self.encodeTree(outFile)
 
         self.buildCodebook()
 
@@ -149,10 +159,32 @@ class huffmanCoding:
         inFile = open(fileNameW, 'rb')
 
         # Read first 4 bytes to get dimensions
-        rows = inFile.read(2)
-        print(int.from_bytes(rows, "big"))
-        cols = inFile.read(2)
-        print(int.from_bytes(cols, "big"))
+        rowsBytes = inFile.read(2)
+        originalRows = int.from_bytes(rowsBytes, "big")
+        colsBytes = inFile.read(2)
+        originalCols = int.from_bytes(colsBytes, "big")
+
+        # Begin reconstructing huffman tree
+        huffmanTree = self.decompressTree(inFile)
+        
+        # Read in string of codes
+
+
+        # Use string of codes to rebuild image
+
+
+    
+    def decompressTree(self, stream):
+        byte = stream.read(1)
+        if struct.unpack('b',byte)[0] == 1:
+            packedValue = stream.read(4)
+            value = struct.unpack('f',packedValue)[0]
+            return value
+        else:
+            left = self.decompressTree(stream)
+            right = self.decompressTree(stream)
+            return (left, right)
+
 
 
 """ Testing """

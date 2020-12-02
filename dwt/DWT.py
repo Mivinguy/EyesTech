@@ -117,6 +117,7 @@ np.save("outfileLH", bandLH)
 
 
 
+
 # For replaySingle compatability, only runs when testing with singleFrame
 if(not testWithRandom):
     restoredImage = restoredImage.astype(np.uint8)       
