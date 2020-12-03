@@ -44,6 +44,7 @@ class huffmanCoding:
         self.heap = []
         self.heapCopy = []
         self.codeBook = {}
+        self.binaryStr = ""
 
     def frequency(self, image):
         # Count frequency of each pixel value
@@ -93,6 +94,7 @@ class huffmanCoding:
         for row in range(np.shape(image)[0]):
             for col in range(np.shape(image)[1]):
                 codeStr += self.codeBook[(image[row][col])]
+        print("Len codeStr: ", len(codeStr))
         stream.write(self.toBytes(codeStr))
 
     def toBytes(self, data):
@@ -150,6 +152,7 @@ class huffmanCoding:
         self.encodeTree(outFile)
 
         self.buildCodebook()
+        print(self.codeBook[-0.5])
 
         # Then write the compressed pixel values
         self.encodeImage(self.image, outFile)
@@ -166,14 +169,36 @@ class huffmanCoding:
 
         # Begin reconstructing huffman tree
         huffmanTree = self.decompressTree(inFile)
+        originalImage = np.zeros((originalRows, originalCols), dtype = np.float64)
         
-        # Read in string of codes
+        # Read in compressed values as binary string
+        while byte := inFile.read(1):
+            self.binaryStr += bin(int(byte.hex(), 16))[2:]
+        print("Len binStr: ", len(self.binaryStr))
 
+        """ binaryStr is different len than codeStr????? """
 
-        # Use string of codes to rebuild image
+        self.decode_pixels(originalImage, originalRows, originalCols, huffmanTree, inFile)
 
+    def decode_value(self, tree, stream):
+        if (len(self.binaryStr)) == 0:
+            return
+        bit = int(self.binaryStr[0])
+        self.binaryStr = self.binaryStr[1:]
+        node = tree[bit]
+        if type(node) == tuple:
+            return self.decode_value(node, stream)
+        else:
+            return node
 
-    
+    def decode_pixels(self, image, rows, cols, tree, stream):
+        for x in range(rows):
+            for y in range(cols):
+                image[x][y] = self.decode_value(tree, stream)
+        print(self.image)
+        print(image)
+        return 
+        
     def decompressTree(self, stream):
         byte = stream.read(1)
         if struct.unpack('b',byte)[0] == 1:
