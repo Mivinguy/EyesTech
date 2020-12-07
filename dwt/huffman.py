@@ -16,15 +16,13 @@
 # To Do:
 #   Compress multiple bands (HH + HL + LH) into 1 file and restore all of them
 #   Decide on file naming conventions
-#   Convert from heapq to tree list struct 
-#       (heapq gets used up when popping elements, had to make a copy since algorithm has to go 
-#           through it twice)
 
 #
 
 ###########
 
 import struct
+import time
 import numpy as np
 import io
 import heapq
@@ -38,6 +36,7 @@ class Node:
         self.right = None
 
     def __lt__(self, other):
+        # Heap requires comparison method
         return self.freq < other.freq
 
     def __repr__(self):
@@ -48,7 +47,6 @@ class huffmanCoding:
     def __init__(self, image):
         self.image = image
         self.heap = []
-        self.heapCopy = []
         self.codeBook = {}
         self.binaryStr = ""
         self.buffer = ""
@@ -84,7 +82,7 @@ class huffmanCoding:
 
     def buildCodebook(self):
         # Build compressed codes from tree
-        root = heapq.heappop(self.heapCopy)
+        root = heapq.heappop(self.heap)
         currentCode = ""
         self.buildCodebookHelper(root, currentCode)
 
@@ -132,12 +130,21 @@ class huffmanCoding:
         self.toBuffer(binCol, stream)
 
     def encodeTree(self, stream):
-        root = heapq.heappop(self.heap)
-
-        # Make a copy of the original heap to build code book
-        heapq.heappush(self.heapCopy, root)
-        
+        # Compress tree and write to file
+        root = self.heap[0]
         self.encodeTreeHelper(root, stream)
+    
+    def encodeTreeHelper(self, node, stream):
+        if (node.left == None and node.right == None):
+            # Leaf node, write 1, followed by value 
+            stream.write((struct.pack('b', 1)))
+            data = struct.pack('f', node.val)
+            stream.write(data)
+        else:
+            # Parent node, write 0, continue down
+            stream.write((struct.pack('b', 0)))
+            self.encodeTreeHelper(node.left, stream)
+            self.encodeTreeHelper(node.right, stream)
 
     def encodeImage(self, image, stream):
         # Write encoded pixel values to binary file
@@ -145,37 +152,18 @@ class huffmanCoding:
             for col in range(np.shape(image)[1]):
                 self.toBuffer(self.codeBook[(image[row][col])], stream)
 
-    def encodeTreeHelper(self, node, stream):
-        if (node.left == None and node.right == None):
-            # Leaf node, write 1, followed by value 
-            stream.write((struct.pack('b', 1)))
-            data = struct.pack('f', node.val)
-            stream.write(data)
-
-        else:
-            # Parent node, write 0, continue down
-            stream.write((struct.pack('b', 0)))
-            self.encodeTreeHelper(node.left, stream)
-            self.encodeTreeHelper(node.right, stream)
-
     def compress(self):
         fileNameW = 'compressedFrame.bin'
         outFile = open(fileNameW, 'wb')
+
         freq = self.frequency(self.image)
         self.createHeap(freq)
         self.buildTree()
-
-        # First 4 bytes will always be original dimensions
         self.encodeDims(outFile)
-
-        # Write encoded tree to file
         self.encodeTree(outFile)
-
         self.buildCodebook()
-
-        # Then write the compressed pixel values
         self.encodeImage(self.image, outFile)
-        self.flushBuffer(outFile) 
+        self.flushBuffer(outFile)
 
     def decompress(self):
         fileNameW = 'compressedFrame.bin'
@@ -241,12 +229,41 @@ originalHH = np.load('outfileHH.npy')
 originalHL = np.load('outfileHL.npy')
 originalLH = np.load('outfileLH.npy')
 
+start = time.time()
 huffmanCoding(originalHH).compress()
+end = time.time()
+firstC = end-start
+
+start = time.time()
 huffmanCoding(originalHH).decompress()
+end = time.time()
+firstD = end-start
+print("-------------------------------------------------------------------")
+print("\nTime to compress|decompress HH: ", firstC, " | ", firstD)
 
+start = time.time()
 huffmanCoding(originalHL).compress()
-huffmanCoding(originalHL).decompress()
+end = time.time()
+secondC = end-start
 
+start = time.time()
+huffmanCoding(originalHL).decompress()
+end = time.time()
+secondD = end-start
+print("Time to compress|decompress HL: ", secondC, " | ", secondD)
+
+start = time.time()
 huffmanCoding(originalLH).compress()
+end = time.time()
+thirdC = end-start
+
+start = time.time()
 huffmanCoding(originalLH).decompress()
+end = time.time()
+thirdD = end-start
+print("Time to compress|decompress LH: ", thirdC, " | ", thirdD)
+
+print("\nTotal compression time: ", firstC+secondC+thirdC)
+print("Total decompression time: ", firstD+secondD+thirdD, "\n")
+print("-------------------------------------------------------------------")
 
