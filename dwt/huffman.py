@@ -44,22 +44,24 @@ class Node:
         return "Node {}, left {}, right {} || ".format(self.val, self.left, self.right)
 
 class huffmanCoding:
-    def __init__(self, image):
-        self.image = image
+    def __init__(self, bandHH, bandHL, bandLH):
+        self.bandHH = bandHH
+        self.bandHL = bandHL
+        self.bandLH = bandLH
         self.heap = []
         self.codeBook = {}
         self.binaryStr = ""
         self.buffer = ""
 
-    def frequency(self, image):
+    def frequency(self, band):
         # Count frequency of each pixel value
         freq = {}
-        for row in range(np.shape(image)[0]):
-            for col in range(np.shape(image)[1]):
-                if image[row][col] in freq:
-                    freq[image[row][col]] += 1
+        for row in range(np.shape(band)[0]):
+            for col in range(np.shape(band)[1]):
+                if band[row][col] in freq:
+                    freq[band[row][col]] += 1
                 else:
-                    freq[image[row][col]] = 1
+                    freq[band[row][col]] = 1
         return freq
 
     def createHeap(self, frequency):
@@ -118,14 +120,15 @@ class huffmanCoding:
         if len(self.buffer) > 0:
             self.buffer += "0" * (8 - len(self.buffer))
             self.toFile(stream)
+        assert(len(self.buffer) == 0)
 
-    def encodeDims(self, stream):
+    def encodeDims(self, band, stream):
         # Encode original image dimensions as padded 16 bit values (2 bytes each)
-        rows = np.shape(self.image)[0]
+        rows = np.shape(band)[0]
         binRow = f'{rows:016b}'
         self.toBuffer(binRow, stream)
 
-        cols = np.shape(self.image)[1]
+        cols = np.shape(band)[1]
         binCol = f'{cols:016b}'
         self.toBuffer(binCol, stream)
 
@@ -146,23 +149,52 @@ class huffmanCoding:
             self.encodeTreeHelper(node.left, stream)
             self.encodeTreeHelper(node.right, stream)
 
-    def encodeImage(self, image, stream):
+    def encodeImage(self, band, stream):
         # Write encoded pixel values to binary file
-        for row in range(np.shape(image)[0]):
-            for col in range(np.shape(image)[1]):
-                self.toBuffer(self.codeBook[(image[row][col])], stream)
+        for row in range(np.shape(band)[0]):
+            for col in range(np.shape(band)[1]):
+                self.toBuffer(self.codeBook[(band[row][col])], stream)
 
     def compress(self):
         fileNameW = 'compressedFrame.bin'
         outFile = open(fileNameW, 'wb')
+        
+        """
+        Format of compressed BIN file:
+            first 4 bytes = original image dimensions
+            encoded huffman tree
+            encoded image pixel values
+        """
 
-        freq = self.frequency(self.image)
+        freq = self.frequency(self.bandHH)
         self.createHeap(freq)
         self.buildTree()
-        self.encodeDims(outFile)
+        self.encodeDims(self.bandHH, outFile)
         self.encodeTree(outFile)
         self.buildCodebook()
-        self.encodeImage(self.image, outFile)
+        self.encodeImage(self.bandHH, outFile)
+        self.flushBuffer(outFile)
+        self.heap = []
+        self.codeBook = {}
+
+        freq = self.frequency(self.bandHL)
+        self.createHeap(freq)
+        self.buildTree()
+        self.encodeDims(self.bandHL, outFile)
+        self.encodeTree(outFile)
+        self.buildCodebook()
+        self.encodeImage(self.bandHL, outFile)
+        self.flushBuffer(outFile)
+        self.heap = []
+        self.codeBook = {}
+
+        freq = self.frequency(self.bandLH)
+        self.createHeap(freq)
+        self.buildTree()
+        self.encodeDims(self.bandLH, outFile)
+        self.encodeTree(outFile)
+        self.buildCodebook()
+        self.encodeImage(self.bandLH, outFile)
         self.flushBuffer(outFile)
 
     def decompress(self):
@@ -189,25 +221,6 @@ class huffmanCoding:
         # Check if reconstructed image is identical
         np.testing.assert_array_equal(decompressedImage, self.image)
 
-    def decompressValue(self, tree, stream):
-        if (len(self.binaryStr)) == 0:
-            return
-        # Traverse the decompressed tree bit by bit until a value is hit
-        bit = int(self.binaryStr[0])
-        self.binaryStr = self.binaryStr[1:]
-        node = tree[bit]
-        if type(node) == tuple:
-            return self.decompressValue(node, stream)
-        else:
-            return node
-
-    def decompressPixels(self, image, rows, cols, tree, stream):
-        # Restore each pixel value
-        for x in range(rows):
-            for y in range(cols):
-                image[x][y] = self.decompressValue(tree, stream)
-        return image
-        
     def decompressTree(self, stream):
         byte = stream.read(1)
         if struct.unpack('b',byte)[0] == 1:
@@ -221,6 +234,25 @@ class huffmanCoding:
             right = self.decompressTree(stream)
             return (left, right)
 
+    def decompressPixels(self, image, rows, cols, tree, stream):
+        # Restore each pixel value
+        for x in range(rows):
+            for y in range(cols):
+                image[x][y] = self.decompressValue(tree, stream)
+        return image
+
+    def decompressValue(self, tree, stream):
+        if (len(self.binaryStr)) == 0:
+            return
+        # Traverse the decompressed tree bit by bit until a value is hit
+        bit = int(self.binaryStr[0])
+        self.binaryStr = self.binaryStr[1:]
+        node = tree[bit]
+        if type(node) == tuple:
+            return self.decompressValue(node, stream)
+        else:
+            return node
+
 
 
 """ Testing """
@@ -230,40 +262,17 @@ originalHL = np.load('outfileHL.npy')
 originalLH = np.load('outfileLH.npy')
 
 start = time.time()
-huffmanCoding(originalHH).compress()
+huffmanCoding(originalHH, originalHL, originalLH).compress()
 end = time.time()
 firstC = end-start
 
+"""
 start = time.time()
-huffmanCoding(originalHH).decompress()
+huffmanCoding(originalHH, originalHL, originalLH).decompress()
 end = time.time()
 firstD = end-start
+"""
 print("-------------------------------------------------------------------")
-print("\nTime to compress|decompress HH: ", firstC, " | ", firstD)
-
-start = time.time()
-huffmanCoding(originalHL).compress()
-end = time.time()
-secondC = end-start
-
-start = time.time()
-huffmanCoding(originalHL).decompress()
-end = time.time()
-secondD = end-start
-print("Time to compress|decompress HL: ", secondC, " | ", secondD)
-
-start = time.time()
-huffmanCoding(originalLH).compress()
-end = time.time()
-thirdC = end-start
-
-start = time.time()
-huffmanCoding(originalLH).decompress()
-end = time.time()
-thirdD = end-start
-print("Time to compress|decompress LH: ", thirdC, " | ", thirdD)
-
-print("\nTotal compression time: ", firstC+secondC+thirdC)
-print("Total decompression time: ", firstD+secondD+thirdD, "\n")
+#print("\nTime to compress|decompress HH: ", firstC, " | ", firstD)
 print("-------------------------------------------------------------------")
 
