@@ -2,19 +2,16 @@
 
 #
 
-# Huffman coding V1.1
+# Huffman coding V2.0
 
-# 12/04/2020
+# 12/08/2020
 
 # To compress H bands 
 
-# Successfully compresses bandHH of singleFrame.txt to size     19KB       (numpy.save = 118KB)
-#              compresses bandHL of singleFrame.txt to size     38KB       (numpy.save = 117KB)
-#              compresses bandLH of singleFrame.txt to size     30KB       (numpy.save = 116KB)
-#   and decompresses and restores an identical image
+# Successfully compresses bandHH, bandHL, and bandLH into a single BIN file
+# Successfully decompresses and restores the identical bands
 
 # To Do:
-#   Compress multiple bands (HH + HL + LH) into 1 file and restore all of them
 #   Decide on file naming conventions
 
 #
@@ -43,14 +40,13 @@ class Node:
         # Return string representation
         return "Node {}, left {}, right {} || ".format(self.val, self.left, self.right)
 
-class huffmanCoding:
+class huffmanCompress:
     def __init__(self, bandHH, bandHL, bandLH):
         self.bandHH = bandHH
         self.bandHL = bandHL
         self.bandLH = bandLH
         self.heap = []
         self.codeBook = {}
-        self.binaryStr = ""
         self.buffer = ""
 
     def frequency(self, band):
@@ -156,70 +152,87 @@ class huffmanCoding:
                 self.toBuffer(self.codeBook[(band[row][col])], stream)
 
     def compress(self):
-        fileNameW = 'compressedFrame.bin'
+        fileNameW = 'compressedBands.bin'
         outFile = open(fileNameW, 'wb')
         
         """
         Format of compressed BIN file:
-            first 4 bytes = original image dimensions
-            encoded huffman tree
-            encoded image pixel values
+            first 4 bytes = bandHH dimensions
+            bandHH huffman tree
+            bandHH image pixel values
+
+            next 4 bytes = bandHL dims
+            bandHL huffman tree
+            bandHL image pixel values
+
+            next 4 bytes = bandLH dims
+            bandLH huffman tree
+            bandLH image pixel values
         """
 
-        freq = self.frequency(self.bandHH)
+        # Compress and write each band
+        self.compressBand(self.bandHH, outFile)
+        self.compressBand(self.bandHL, outFile)
+        self.compressBand(self.bandLH, outFile)
+
+    def compressBand(self, band, stream):
+        # Make frequency list
+        freq = self.frequency(band)
+
+        # Create huffman tree
         self.createHeap(freq)
         self.buildTree()
-        self.encodeDims(self.bandHH, outFile)
-        self.encodeTree(outFile)
+
+        # Compress and write dimensions/tree to file
+        self.encodeDims(band, stream)
+        self.encodeTree(stream)
+
+        # Create and use codebook to compress band and write to file
         self.buildCodebook()
-        self.encodeImage(self.bandHH, outFile)
-        self.flushBuffer(outFile)
+        self.encodeImage(band, stream)
+
+        # Empty data for next band
+        self.flushBuffer(stream)
         self.heap = []
         self.codeBook = {}
 
-        freq = self.frequency(self.bandHL)
-        self.createHeap(freq)
-        self.buildTree()
-        self.encodeDims(self.bandHL, outFile)
-        self.encodeTree(outFile)
-        self.buildCodebook()
-        self.encodeImage(self.bandHL, outFile)
-        self.flushBuffer(outFile)
-        self.heap = []
-        self.codeBook = {}
-
-        freq = self.frequency(self.bandLH)
-        self.createHeap(freq)
-        self.buildTree()
-        self.encodeDims(self.bandLH, outFile)
-        self.encodeTree(outFile)
-        self.buildCodebook()
-        self.encodeImage(self.bandLH, outFile)
-        self.flushBuffer(outFile)
+class huffmanDecompress:
+    def __init__(self, binFile):
+        self.fileName = binFile
+        self.binaryStr = ""
 
     def decompress(self):
-        fileNameW = 'compressedFrame.bin'
-        inFile = open(fileNameW, 'rb')
+        inFile = open(self.fileName, 'rb')
 
+        # Decompress each band
+        bandHH = self.decompressBand(inFile)
+        bandHL = self.decompressBand(inFile)
+        bandLH = self.decompressBand(inFile)
+
+        return bandHH, bandHL, bandLH
+
+    def decompressBand(self, stream):
         # Read first 4 bytes to get dimensions
-        rowsBytes = inFile.read(2)
-        originalRows = int.from_bytes(rowsBytes, "big")
-        colsBytes = inFile.read(2)
-        originalCols = int.from_bytes(colsBytes, "big")
+        originalRows, originalCols = self.decompressDims(stream)
+        originalBand = np.zeros((originalRows, originalCols), dtype = np.float64)
 
         # Begin reconstructing huffman tree
-        huffmanTree = self.decompressTree(inFile)
-        originalImage = np.zeros((originalRows, originalCols), dtype = np.float64)
-        
-        # Read in compressed values as binary string
-        while byte := inFile.read(1):
-            self.binaryStr += bin(int(byte.hex(), 16))[2:].zfill(8)
+        huffmanTree = self.decompressTree(stream)
 
-        # Use binaryStr to recreate original image
-        decompressedImage = self.decompressPixels(originalImage, originalRows, originalCols, huffmanTree, inFile)
+        # Use binaryStr to recreate original band
+        band = self.decompressPixels(originalBand, originalRows, originalCols, huffmanTree, stream)
 
-        # Check if reconstructed image is identical
-        np.testing.assert_array_equal(decompressedImage, self.image)
+        # Empty data for next bandcd
+        self.binaryStr = ""
+
+        return band
+
+    def decompressDims(self, stream):
+        rowsBytes = stream.read(2)
+        originalRows = int.from_bytes(rowsBytes, "big")
+        colsBytes = stream.read(2)
+        originalCols = int.from_bytes(colsBytes, "big")
+        return (originalRows, originalCols)
 
     def decompressTree(self, stream):
         byte = stream.read(1)
@@ -243,7 +256,9 @@ class huffmanCoding:
 
     def decompressValue(self, tree, stream):
         if (len(self.binaryStr)) == 0:
-            return
+            # Read in compressed values as binary string
+            byte = stream.read(1)
+            self.binaryStr += bin(int(byte.hex(), 16))[2:].zfill(8)
         # Traverse the decompressed tree bit by bit until a value is hit
         bit = int(self.binaryStr[0])
         self.binaryStr = self.binaryStr[1:]
@@ -254,7 +269,6 @@ class huffmanCoding:
             return node
 
 
-
 """ Testing """
 
 originalHH = np.load('outfileHH.npy')
@@ -262,17 +276,20 @@ originalHL = np.load('outfileHL.npy')
 originalLH = np.load('outfileLH.npy')
 
 start = time.time()
-huffmanCoding(originalHH, originalHL, originalLH).compress()
+huffmanCompress(originalHH, originalHL, originalLH).compress()
 end = time.time()
 firstC = end-start
 
-"""
 start = time.time()
-huffmanCoding(originalHH, originalHL, originalLH).decompress()
+bandHH, bandHL, bandLH = huffmanDecompress('compressedBands.bin').decompress()
 end = time.time()
 firstD = end-start
-"""
-print("-------------------------------------------------------------------")
-#print("\nTime to compress|decompress HH: ", firstC, " | ", firstD)
-print("-------------------------------------------------------------------")
+
+print("\nTime to compress: ", firstC)
+print("Time to decompress: ", firstD, "\n")
+
+# Verify decompression
+np.testing.assert_array_equal(bandHH, originalHH)
+np.testing.assert_array_equal(bandHL, originalHL)
+np.testing.assert_array_equal(bandLH, originalLH)
 
