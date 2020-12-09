@@ -7,15 +7,17 @@
 # 11/24/2020
 
 # Accepts an image to be analyzed and level of decomposition desired
-#   returns lowest level bandLL to be stored in the double buffer
-#   compresses H bands with Huffman coding and packages them out
+#   returns lowest level bandLL
+#   compresses H bands with Huffman coding and packages them out to BIN file
+#       labeled by 'HBands_levelx.bin' where x is the level of decomp
 
 ###########
 
 import numpy as np
 from padding import padArray
+from huffman import huffmanCompress
 
-def decomposition(image, levels):
+def decomposition(image, curPass, totalPasses):
     originalRow, originalCol = np.shape(image)
     adjust = np.zeros(np.shape(image), dtype = np.uint8)
     adjust[:,:] = 128
@@ -40,11 +42,11 @@ def decomposition(image, levels):
     bandHH = odd - (even[:-1,:]+even[1:,:])/2
     bandHL = even[1:-1,:] + (bandHH[:-1,:] + bandHH[1:,:])/4
 
-    print(np.shape(bandLL), " current level: ", levels)
+    # Compress and package the 3 H bands and original shape
+    huffmanCompress(bandHH, bandHL, bandLH, curPass, originalRow, originalCol).compress()
 
-    """ Compress and package the 3 H bands here """
-
-    if levels <= 1:
+    if curPass == totalPasses:
         return bandLL
     else:
-        return decomposition(bandLL, levels - 1)
+        print("Original :\n", bandLL)
+        return decomposition(bandLL, curPass + 1, totalPasses)

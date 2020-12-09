@@ -41,10 +41,13 @@ class Node:
         return "Node {}, left {}, right {} || ".format(self.val, self.left, self.right)
 
 class huffmanCompress:
-    def __init__(self, bandHH, bandHL, bandLH):
+    def __init__(self, bandHH, bandHL, bandLH, level, row, col):
         self.bandHH = bandHH
         self.bandHL = bandHL
         self.bandLH = bandLH
+        self.level = level
+        self.row = row
+        self.col = col
         self.heap = []
         self.codeBook = {}
         self.buffer = ""
@@ -119,7 +122,7 @@ class huffmanCompress:
         assert(len(self.buffer) == 0)
 
     def encodeDims(self, band, stream):
-        # Encode original image dimensions as padded 16 bit values (2 bytes each)
+        # Encode band dimensions as padded 16 bit values (2 bytes each)
         rows = np.shape(band)[0]
         binRow = f'{rows:016b}'
         self.toBuffer(binRow, stream)
@@ -151,8 +154,16 @@ class huffmanCompress:
             for col in range(np.shape(band)[1]):
                 self.toBuffer(self.codeBook[(band[row][col])], stream)
 
+    def encodeShape(self, row, col, stream):
+        # Encode original image dimensions as padded 16 bit values (2 bytes each)
+        binRow = f'{row:016b}'
+        self.toBuffer(binRow, stream)
+
+        binCol = f'{col:016b}'
+        self.toBuffer(binCol, stream)
+
     def compress(self):
-        fileNameW = 'compressedBands.bin'
+        fileNameW = 'Hbands_level' + str(self.level) + '.bin'
         outFile = open(fileNameW, 'wb')
         
         """
@@ -174,6 +185,7 @@ class huffmanCompress:
         self.compressBand(self.bandHH, outFile)
         self.compressBand(self.bandHL, outFile)
         self.compressBand(self.bandLH, outFile)
+        self.encodeShape(self.row, self.col, outFile)
 
     def compressBand(self, band, stream):
         # Make frequency list
@@ -208,8 +220,9 @@ class huffmanDecompress:
         bandHH = self.decompressBand(inFile)
         bandHL = self.decompressBand(inFile)
         bandLH = self.decompressBand(inFile)
+        shape = self.decompressDims(inFile)
 
-        return bandHH, bandHL, bandLH
+        return bandHH, bandHL, bandLH, shape
 
     def decompressBand(self, stream):
         # Read first 4 bytes to get dimensions
@@ -222,7 +235,7 @@ class huffmanDecompress:
         # Use binaryStr to recreate original band
         band = self.decompressPixels(originalBand, originalRows, originalCols, huffmanTree, stream)
 
-        # Empty data for next bandcd
+        # Empty data for next band
         self.binaryStr = ""
 
         return band
@@ -269,27 +282,36 @@ class huffmanDecompress:
             return node
 
 
-""" Testing """
+
+""" Testing
 
 originalHH = np.load('outfileHH.npy')
 originalHL = np.load('outfileHL.npy')
 originalLH = np.load('outfileLH.npy')
 
 start = time.time()
-huffmanCompress(originalHH, originalHL, originalLH).compress()
+huffmanCompress(originalHH, originalHL, originalLH, 1, 183, 90).compress()
 end = time.time()
 firstC = end-start
 
 start = time.time()
-bandHH, bandHL, bandLH = huffmanDecompress('compressedBands.bin').decompress()
+bandHH, bandHL, bandLH, shape = huffmanDecompress('HBands_level1.bin').decompress()
 end = time.time()
 firstD = end-start
+
 
 print("\nTime to compress: ", firstC)
 print("Time to decompress: ", firstD, "\n")
 
 # Verify decompression
 np.testing.assert_array_equal(bandHH, originalHH)
+print('BandHH pass')
 np.testing.assert_array_equal(bandHL, originalHL)
+print('BandHL pass')
 np.testing.assert_array_equal(bandLH, originalLH)
+print('BandLH pass')
+
+"""
+
+
 

@@ -9,31 +9,47 @@
 ###########
 
 import numpy as np
+from huffman import huffmanDecompress
 
-def synthesis(bandLL, bandLH, bandHL, bandHH):
-    """ Needs the original shape of the image to be restored  """
+def synthesis(bandLL, totalPasses):
+    # Find correct bin file
+    binFile = 'Hbands_level' + str(totalPasses) + '.bin'
+
+    # Decompress values
+    bandHH, bandHL, bandLH, originalShape = huffmanDecompress(binFile).decompress()
+    originalRow, originalCol = originalShape
 
     # Synthesize bandL
     synthEvenBandL = bandLL - (bandLH[:-1,:] + bandLH[1:,:])/4
     synthOddBandL = bandLH[1:-1,:] + (synthEvenBandL[:-1,:]+synthEvenBandL[1:,:])/2
-    synthBandL = np.zeros(((originalRow+1)%2 + originalRow, originalCol//2+1), dtype = np.float16)
+    synthBandL = np.zeros(((originalRow+1)%2 + originalRow, originalCol//2+1), dtype = np.float64)
     synthBandL[::2,:] = synthEvenBandL
     synthBandL[1::2,:] = synthOddBandL
 
     # Synthesize bandH
     synthEvenBandH = bandHL - (bandHH[:-1,:] + bandHH[1:,:])/4
     synthOddBandH = bandHH[1:-1,:] + (synthEvenBandH[:-1,:]+synthEvenBandH[1:,:])/2
-    synthBandH = np.zeros(((originalRow+1)%2 + originalRow, originalCol//2+2), dtype = np.float16)
+    synthBandH = np.zeros(((originalRow+1)%2 + originalRow, originalCol//2+2), dtype = np.float64)
     synthBandH[::2,:] = synthEvenBandH
     synthBandH[1::2,:] = synthOddBandH
 
-    # Restore image with bandL and bandH
-    restoredImageEven = synthBandL - (synthBandH[:,:-1] + synthBandH[:,1:])/4
-    restoredImageEven = restoredImageEven.astype('int8')
-    restoredImageOdd = synthBandH[:,1:-1] + (restoredImageEven[:,:-1]+restoredImageEven[:,1:])/2
-    restoredImageOdd = restoredImageOdd.astype('int8')
 
-    restoredImage = np.zeros(np.shape(original), dtype = np.int8)
+    """  Problem: the restoredImage(bandLL) of passes deeper than 1, is an array of floats not ints, therefore
+                  math is off when trying to re-synthesize  
+    """
+    # Restore image with bandL and bandH
+    if totalPasses == 1:
+        restoredImageEven = synthBandL - (synthBandH[:,:-1] + synthBandH[:,1:])/4
+        restoredImageEven = restoredImageEven.astype('int8')
+        restoredImageOdd = synthBandH[:,1:-1] + (restoredImageEven[:,:-1]+restoredImageEven[:,1:])/2
+        restoredImageOdd = restoredImageOdd.astype('int8')
+
+        restoredImage = np.zeros(originalShape, dtype = np.int8)
+    else:
+        restoredImageEven = synthBandL - (synthBandH[:,:-1] + synthBandH[:,1:])/4
+        restoredImageOdd = synthBandH[:,1:-1] + (restoredImageEven[:,:-1]+restoredImageEven[:,1:])/2
+
+        restoredImage = np.zeros(originalShape, dtype = np.float64)
 
     # Need to think of cleaner implementation
     # By cases
@@ -54,6 +70,12 @@ def synthesis(bandLL, bandLH, bandHL, bandHH):
             # Dims = (odd, odd)
             restoredImage[:,::2] = restoredImageEven[:,:]
 
+    adjust = np.zeros(originalShape, dtype = np.uint8)
+    adjust[:,:] = 128
     restoredImage = restoredImage[:,:] + adjust[:,:]
 
-    return restoredImage
+    if totalPasses == 1:
+        return restoredImage
+    else:
+        print("Restored :\n", restoredImage)
+        return synthesis(restoredImage, totalPasses - 1)
