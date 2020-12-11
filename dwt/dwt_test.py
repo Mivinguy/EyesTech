@@ -29,15 +29,16 @@ image_stream = io.BytesIO()
 image_stream.write(inFile.read(image_len))
 image_stream.seek(0)
 
-num_of_passes = 2
+num_of_passes = 4
 
 original = np.frombuffer(image_stream.getvalue(), dtype=np.uint8).reshape(318,183) # reshaped the test image, it is originally of dimension (58194,)
+
 lowestBandLL = decomposition(original, 1, num_of_passes)
 restoredImage = synthesis(lowestBandLL, num_of_passes)
 
-#print(restoredImage)
-#print('\n')
-#print(original)
+print("Restored from lowest level bandLL: \n", restoredImage)
+print('\n')
+print("Original: \n", original)
 
-#np.testing.assert_array_equal(restoredImage, original)
+np.testing.assert_array_equal(original, restoredImage)
 

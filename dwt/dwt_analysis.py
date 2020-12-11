@@ -45,8 +45,8 @@ def decomposition(image, curPass, totalPasses):
     # Compress and package the 3 H bands and original shape
     huffmanCompress(bandHH, bandHL, bandLH, curPass, originalRow, originalCol).compress()
 
+    # Recursion
     if curPass == totalPasses:
         return bandLL
     else:
-        print("Original :\n", bandLL)
         return decomposition(bandLL, curPass + 1, totalPasses)

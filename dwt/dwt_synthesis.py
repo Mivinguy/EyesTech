@@ -33,23 +33,11 @@ def synthesis(bandLL, totalPasses):
     synthBandH[::2,:] = synthEvenBandH
     synthBandH[1::2,:] = synthOddBandH
 
-
-    """  Problem: the restoredImage(bandLL) of passes deeper than 1, is an array of floats not ints, therefore
-                  math is off when trying to re-synthesize  
-    """
     # Restore image with bandL and bandH
-    if totalPasses == 1:
-        restoredImageEven = synthBandL - (synthBandH[:,:-1] + synthBandH[:,1:])/4
-        restoredImageEven = restoredImageEven.astype('int8')
-        restoredImageOdd = synthBandH[:,1:-1] + (restoredImageEven[:,:-1]+restoredImageEven[:,1:])/2
-        restoredImageOdd = restoredImageOdd.astype('int8')
+    restoredImageEven = synthBandL - (synthBandH[:,:-1] + synthBandH[:,1:])/4
+    restoredImageOdd = synthBandH[:,1:-1] + (restoredImageEven[:,:-1]+restoredImageEven[:,1:])/2
 
-        restoredImage = np.zeros(originalShape, dtype = np.int8)
-    else:
-        restoredImageEven = synthBandL - (synthBandH[:,:-1] + synthBandH[:,1:])/4
-        restoredImageOdd = synthBandH[:,1:-1] + (restoredImageEven[:,:-1]+restoredImageEven[:,1:])/2
-
-        restoredImage = np.zeros(originalShape, dtype = np.float64)
+    restoredImage = np.zeros(originalShape, dtype = np.float64)
 
     # Need to think of cleaner implementation
     # By cases
@@ -74,8 +62,9 @@ def synthesis(bandLL, totalPasses):
     adjust[:,:] = 128
     restoredImage = restoredImage[:,:] + adjust[:,:]
 
+    # Recursion
     if totalPasses == 1:
+        restoredImage = np.rint(restoredImage).astype('uint8')
         return restoredImage
     else:
-        print("Restored :\n", restoredImage)
         return synthesis(restoredImage, totalPasses - 1)
