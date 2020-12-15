@@ -16,6 +16,7 @@
 import numpy as np
 from padding import padArray
 from huffman import huffmanCompress
+import os
 
 def decomposition(image, curPass, totalPasses):
     originalRow, originalCol = np.shape(image)
@@ -44,6 +45,12 @@ def decomposition(image, curPass, totalPasses):
 
     # Compress and package the 3 H bands and original shape
     huffmanCompress(bandHH, bandHL, bandLH, curPass, originalRow, originalCol).compress()
+
+    # Get statistics of raw/compressed H bands
+    total_size = bandHH.nbytes + bandHL.nbytes + bandLH.nbytes
+    fileName = "Hbands_level" + str(curPass) + ".bin"
+    print("Pass: ", curPass, "| Raw size: ", total_size, "| Compressed size: ", os.path.getsize(fileName),
+            "| Compression ratio: ", round(total_size/os.path.getsize(fileName), 2))
 
     # Recursion
     if curPass == totalPasses:
