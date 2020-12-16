@@ -4,7 +4,7 @@
 
 # DWT Analysis V1.0
 
-# 11/24/2020
+# 12/15/2020
 
 # Accepts an image to be analyzed and level of decomposition desired
 #   returns lowest level bandLL

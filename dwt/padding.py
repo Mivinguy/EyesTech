@@ -2,11 +2,14 @@
 
 #
 
-# PADDING FUNCTION
+# Padding arrays for DWT V1.0
+
+# 12/15/2020
 
 #
 
 ###########
+
 
 import numpy as np
 
@@ -36,34 +39,3 @@ def padArray(arr, dimensions):
     newArr[padAmount+row:newRowNum, 0:newColNum] = np.flipud(newArr[(row-(row+1)%2):row+padAmount,])
 
     return newArr
-
-
-"""Testing code
-
-# Adjust size of input array here
-original = np.random.randint(255, size=(6, 5))
-print("Original: \n", original, "\n")
-
-symmetricOriginal = padArray(original, np.shape(original))
-print("My generated array: \n", symmetricOriginal, "\n")
-
-# Verify that the function is identical
-# Only verifys when both dimensions are odd
-if ((np.shape(original)[0]%2 != 0 and np.shape(original)[1])%2 != 0):
-    numpyPad = np.pad(original, (2,), "symmetric")
-    print("Numpy generated array: \n", numpyPad)
-    print("\nDouble Odd Case (assert tested)\n")
-    np.testing.assert_array_equal(symmetricOriginal, numpyPad)
-
-# Only verifys when both dimensions are even
-elif ((np.shape(original)[0]%2 == 0 and np.shape(original)[1]%2 == 0)):
-    numpyPad = np.pad(original, (2,3), "symmetric")
-    print("Numpy generated array: \n", numpyPad)
-    print("\nDouble Even Case (assert tested)\n")
-    np.testing.assert_array_equal(symmetricOriginal, numpyPad)
-
-else:
-    print("Single Even Case (no assert test)")
-    numpyPad = np.pad(original, (2,), "symmetric")
-    print("Numpy generated array for reference (missing a row or column): \n", numpyPad)
-"""

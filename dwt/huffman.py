@@ -2,17 +2,9 @@
 
 #
 
-# Huffman coding V2.0
+# Huffman coding V1.0
 
-# 12/08/2020
-
-# To compress H bands 
-
-# Successfully compresses bandHH, bandHL, and bandLH into a single BIN file
-# Successfully decompresses and restores the identical bands
-
-# To Do:
-#   Decide on file naming conventions
+# 12/15/2020
 
 #
 
