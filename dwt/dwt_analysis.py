@@ -29,19 +29,19 @@ def decomposition(image, curPass, totalPasses):
     # Horizontal pass
     even = paddedData1[:,::2]
     odd = paddedData1[:,1::2]
-    bandH = odd - (even[:,:-1]+even[:,1:])/2
-    bandL = even[:,1:-1] + (bandH[:,:-1] + bandH[:,1:])/4
+    bandH = odd - (even[:,:-1]+even[:,1:])//2
+    bandL = even[:,1:-1] + (bandH[:,:-1] + bandH[:,1:])//4
 
     # Vertical pass
     even = bandL[::2,:]
     odd = bandL[1::2,:]
-    bandLH = odd - (even[:-1,:]+even[1:,:])/2
-    bandLL = even[1:-1,:] + (bandLH[:-1,:] + bandLH[1:,:])/4
+    bandLH = odd - (even[:-1,:]+even[1:,:])//2
+    bandLL = even[1:-1,:] + (bandLH[:-1,:] + bandLH[1:,:])//4
 
     even = bandH[::2,:]
     odd = bandH[1::2,:]
-    bandHH = odd - (even[:-1,:]+even[1:,:])/2
-    bandHL = even[1:-1,:] + (bandHH[:-1,:] + bandHH[1:,:])/4
+    bandHH = odd - (even[:-1,:]+even[1:,:])//2
+    bandHL = even[1:-1,:] + (bandHH[:-1,:] + bandHH[1:,:])//4
 
     # Compress and package the 3 H bands and original shape
     huffmanCompress(bandHH, bandHL, bandLH, curPass, originalRow, originalCol).compress()
