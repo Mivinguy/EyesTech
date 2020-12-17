@@ -22,26 +22,25 @@ def synthesis(bandLL, totalPasses):
     originalRow, originalCol = originalShape
 
     # Synthesize bandL
-    synthEvenBandL = bandLL - (bandLH[:-1,:] + bandLH[1:,:])/4
-    synthOddBandL = bandLH[1:-1,:] + (synthEvenBandL[:-1,:]+synthEvenBandL[1:,:])/2
-    synthBandL = np.zeros(((originalRow+1)%2 + originalRow, originalCol//2+1), dtype = np.float64)
+    synthEvenBandL = bandLL - (bandLH[:-1,:] + bandLH[1:,:])//4
+    synthOddBandL = bandLH[1:-1,:] + (synthEvenBandL[:-1,:]+synthEvenBandL[1:,:])//2
+    synthBandL = np.zeros(((originalRow+1)%2 + originalRow, originalCol//2+1), dtype = np.int16)
     synthBandL[::2,:] = synthEvenBandL
     synthBandL[1::2,:] = synthOddBandL
 
     # Synthesize bandH
-    synthEvenBandH = bandHL - (bandHH[:-1,:] + bandHH[1:,:])/4
-    synthOddBandH = bandHH[1:-1,:] + (synthEvenBandH[:-1,:]+synthEvenBandH[1:,:])/2
-    synthBandH = np.zeros(((originalRow+1)%2 + originalRow, originalCol//2+2), dtype = np.float64)
+    synthEvenBandH = bandHL - (bandHH[:-1,:] + bandHH[1:,:])//4
+    synthOddBandH = bandHH[1:-1,:] + (synthEvenBandH[:-1,:]+synthEvenBandH[1:,:])//2
+    synthBandH = np.zeros(((originalRow+1)%2 + originalRow, originalCol//2+2), dtype = np.int16)
     synthBandH[::2,:] = synthEvenBandH
     synthBandH[1::2,:] = synthOddBandH
 
     # Restore image with bandL and bandH
-    restoredImageEven = synthBandL - (synthBandH[:,:-1] + synthBandH[:,1:])/4
-    restoredImageOdd = synthBandH[:,1:-1] + (restoredImageEven[:,:-1]+restoredImageEven[:,1:])/2
+    restoredImageEven = synthBandL - (synthBandH[:,:-1] + synthBandH[:,1:])//4
+    restoredImageOdd = synthBandH[:,1:-1] + (restoredImageEven[:,:-1]+restoredImageEven[:,1:])//2
 
-    restoredImage = np.zeros(originalShape, dtype = np.float64)
+    restoredImage = np.zeros(originalShape, dtype = np.int16)
 
-    # Need to think of cleaner implementation
     # By cases
     if(originalRow%2 == 0):
         restoredImage[:,1::2] = restoredImageOdd[:-1,:]
@@ -66,7 +65,6 @@ def synthesis(bandLL, totalPasses):
 
     # Recursion
     if totalPasses == 1:
-        restoredImage = np.rint(restoredImage).astype('uint8')
-        return restoredImage
+        return restoredImage.astype('uint8')
     else:
         return synthesis(restoredImage, totalPasses - 1)

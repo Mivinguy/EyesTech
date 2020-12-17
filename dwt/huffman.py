@@ -219,7 +219,7 @@ class huffmanDecompress:
     def decompressBand(self, stream):
         # Read first 4 bytes to get dimensions
         originalRows, originalCols = self.decompressDims(stream)
-        originalBand = np.zeros((originalRows, originalCols), dtype = np.float64)
+        originalBand = np.zeros((originalRows, originalCols), dtype = np.int16)
 
         # Begin reconstructing huffman tree
         huffmanTree = self.decompressTree(stream)

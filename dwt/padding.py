@@ -26,7 +26,7 @@ def padArray(arr, dimensions):
     # used this same idea when padding right and below 
 
     # Allocate a new array of correct size and copy the original array into it
-    newArr = np.zeros((newRowNum,newColNum), dtype = np.float64)
+    newArr = np.zeros((newRowNum,newColNum), dtype = np.int16)
     newArr[padAmount:row+padAmount, padAmount:col+padAmount] = arr
 
     # Padding the left of the array symmetrically
